@@ -20,7 +20,7 @@ class Index
         $register_token='设备获取到的token';
         # 订阅
         $topic_name = "news";		//自定义的主题名称 字符串
-        $Fcm= new Fcm();
+        $Fcm= new Fcm($config);
         //$Fcm->addManyTopic($topic_name,$register_tokens)//推送多设置
         $Fcm->addTopic($topic_name,$register_token);//推送单设置
         $sendDate=[
