@@ -6,7 +6,7 @@
 
 ### 调用例子
 ```
-use fcm\Fcm;
+use since\Fcm;
 class Index
 {
 
