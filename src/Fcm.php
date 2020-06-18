@@ -43,6 +43,7 @@ class Fcm
         $url = sprintf('https://iid.googleapis.com/iid/info/%s', $register_token);
         return  $this->curl->setHeader($this->getCommonHeader())->get($url);
     }
+
     /**将设备添加到主题
      * @param string $topic_name 根据业务自定义的主题名称
      * @param string $register_token 前端授权得到的REGISTRATION_TOKEN
@@ -65,7 +66,7 @@ class Fcm
         $data=[
             'to'=>$topic_name,
             'registration_tokens'=>$register_tokens
-            ];
+        ];
         return  $this->curl->setHeader($this->getCommonHeader())->setBody($data)->post($url);
     }
 
@@ -86,10 +87,11 @@ class Fcm
     {
         return [
             'Content-Type'=>'application/json',
-            'Content-Length'=>' 0',
+            'Content-Length'=>'0',
             'Authorization'=>'key='.$this->options['key']
         ];
     }
+
     /**推送消息的请求header
      * @return string[]
      * @throws \Google_Exception
@@ -98,7 +100,7 @@ class Fcm
     {
         return [
             'Content-Type'=>'application/json',
-            'Authorization'=>'Bearer '.$this->getAccessToken($this->options['google_server'])
+            'Authorization'=>'Bearer '.$this->getAccessToken($this->options['google_server']),
         ];
     }
 
@@ -150,7 +152,6 @@ class Fcm
             $this->options = array_merge($this->options, $options);
         }
         $sendData= ['message' => array_filter($this->common)];
-        var_dump($sendData);
         return  $this->push($sendData);
     }
 }

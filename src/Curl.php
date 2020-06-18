@@ -19,42 +19,38 @@ use Psr\Http\Message\ResponseInterface;
 
 class Curl
 {
-    protected $_body = [];
-    protected $_header = [];
+    protected $common = [
+        'headers' => null,
+        'json' => null
+    ];
+
     /**设置header
      * @param $header
-     * @return $this
+     * @return \app\common\lib\FCM\Curl
      */
-    public  function setHeader($header)
+    public function setHeader($header)
     {
-        $this->_header = $header;
+        $this->common['headers'] = $header;
         return $this;
-    }
-
-    /**获取header
-     * @return array
-     */
-    public  function getHeader()
-    {
-       return $this->_header;
     }
 
     /**设置body
      * @param $param
      * @return $this
      */
-    public  function setBody($param)
+    public function setBody($param)
     {
-        $this->_body = $param;
+
+        $this->common['json'] = $param;
         return $this;
     }
 
     /**获取参数
      * @return array
      */
-    public  function getBody()
+    public function getParam(): array
     {
-        return $this->_body;
+        return $this->common;
     }
 
     /**
@@ -63,7 +59,8 @@ class Curl
      * @return string
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    public function request($url, $method){
+    public function request($url, $method)
+    {
         $stack = new HandlerStack();
         $stack->setHandler(new CurlHandler());
         $stack->push(Middleware::mapRequest(function (RequestInterface $r) {
@@ -71,31 +68,30 @@ class Curl
         }));
 
         $stack->push(Middleware::mapResponse(function (ResponseInterface $response) {
-            return $response->withHeader('aaa', 'bar');
+
+            return $response->withHeader('bbb', 'bbb');
         }));
         $client = new Client(['handler' => $stack]);
-        $response=$client->request($method, $url,[
-            'headers' => $this->getHeader(),
-            'json'=> $this->getBody(),
-        ]);
+        $response = $client->request($method, $url, $this->getParam());
         return $response->getBody()->getContents();
-
-
     }
+
     /**get方式请求
      * @param $url
      * @return string
+     * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    public  function get($url)
+    public function get($url)
     {
-        return $this->request($url,'GET');
+        return $this->request($url, 'GET');
     }
 
     /**POST方式请求
      * @param $url
      * @return string
+     * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    public  function post($url)
+    public function post($url)
     {
         return $this->request($url, 'POST');
     }
