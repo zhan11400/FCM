@@ -2,7 +2,7 @@
 谷歌fcm推送
 ## 安装
 
-> composer require since/fcm
+> composer require since/fcm dev-master 
 
 ### 调用例子
 ```
@@ -21,8 +21,8 @@ class Index
         # 订阅
         $topic_name = "news";		//自定义的主题名称 字符串
         $Fcm= new Fcm($config);
-        //$Fcm->addManyTopic($topic_name,$register_tokens)//推送多设置
-        $Fcm->addTopic($topic_name,$register_token);//推送单设置
+        //$Fcm->addManyTopic($topic_name,$register_tokens)//添加到多设备主题
+        $Fcm->addTopic($topic_name,$register_token);//推送单设备主题
         $sendDate=[
             'data'=>["story_id" => 'story_12345'],
             'notification'=>[
