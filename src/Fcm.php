@@ -7,7 +7,12 @@
  */
 
 namespace since;
-
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\CurlHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use think\facade\Cache;
 
 class Fcm
@@ -30,78 +35,93 @@ class Fcm
         'project_id'    => '',//项目id
         'google_server'       => '',//下载的service-account-file.json文件存放路径
     ];
+    protected $Authorization;
     public function __construct(array $options)
     {
         if (!empty($options)) {
             $this->options = array_merge($this->options, $options);
         }
-        $this->curl=new Curl();
+        $stack = new HandlerStack();
+        $stack->setHandler(new CurlHandler());
+        $stack->push(Middleware::mapRequest(function (RequestInterface $request) {
+
+            return $request
+                ->withHeader('Content-Type',"application/json")
+                ->withHeader('Authorization', $this->Authorization);
+        }));
+        $stack->push(Middleware::mapResponse(function (ResponseInterface $response) {
+            $httpCode=$response->getStatusCode();
+            switch ($httpCode){
+                case 400: $result='{"error":"request parameters are missing or invalid. Check error messages for"}';break;
+                case 403:$result='{"error":"authorization header doesn\'t match the authorizedEntity"}';break;
+                case 401:$result='{"error":"authorization header is invalid."}';break;
+                case 404:$result='{"error":" Invalid HTTP path or IID token not found. Check error messages for detailed information."}';break;
+                default:
+                    $result=$response->getBody()->getContents();
+            }
+            return $result;
+        }));
+
+        $this->curl= new Client(['handler' => $stack]);
     }
 
+    /**
+     * @param $register_token
+     * @return ResponseInterface
+     * @throws \Google_Exception
+     */
     public function info($register_token)
     {
+
         $url = sprintf('https://iid.googleapis.com/iid/info/%s', $register_token);
-        return  $this->curl->setHeader($this->getCommonHeader())->get($url);
+        return  $this->setHeader()->curl->get($url);
     }
 
     /**将设备添加到主题
      * @param string $topic_name 根据业务自定义的主题名称
      * @param string $register_token 前端授权得到的REGISTRATION_TOKEN
      * @return string
+     * @throws \Google_Exception
      */
     public  function addTopic(string  $topic_name, string $register_token)
     {
+
         $url = sprintf('https://iid.googleapis.com/iid/v1/%s/rel/topics/%s', $register_token, $topic_name);
-        return  $this->curl->setHeader($this->getCommonHeader())->post($url);
+        return  $this->setHeader()->curl->post($url);
     }
 
     /**将多设备添加到主题
      * @param string $topic_name
      * @param array $register_tokens 最多更新1000个应用程序实例
      * @return string
+     * @throws \Google_Exception
      */
     public function addManyTopic(string $topic_name, array $register_tokens)
     {
+
         $url = 'https://iid.googleapis.com/iid/v1:batchAdd';
         $data=[
-            'to'=>$topic_name,
+            'to'=>"/topics/".$topic_name,
             'registration_tokens'=>$register_tokens
         ];
-        return  $this->curl->setHeader($this->getCommonHeader())->setBody($data)->post($url);
+        return  $this->setHeader()->curl->post($url,[
+            'json'=>$data
+        ]);
     }
 
-    /**推送信息
-     * @param $data
-     * @return string
-     */
-    public function push($data)
-    {
-        $url = 'https://fcm.googleapis.com/v1/projects/'.$this->options['project_id'].'/messages:send';
-        return $this->curl->setHeader($this->getAccessTokenHeader())->setBody($data)->post($url);
-    }
     /**
-     * 添加主题的header
-     * @return array
-     */
-    protected function getCommonHeader()
-    {
-        return [
-            'Content-Type'=>'application/json',
-            'Content-Length'=>'0',
-            'Authorization'=>'key='.$this->options['key']
-        ];
-    }
-
-    /**推送消息的请求header
-     * @return string[]
+     * @param string $type
+     * @return $this
      * @throws \Google_Exception
      */
-    protected  function getAccessTokenHeader()
+    protected function setHeader($type='topic')
     {
-        return [
-            'Content-Type'=>'application/json',
-            'Authorization'=>'Bearer '.$this->getAccessToken($this->options['google_server']),
-        ];
+        if($type=='topic') {//主题头
+            $this->Authorization = 'key=' . $this->options['key'];
+        }else{//发送头
+            $this->Authorization =  'Bearer '.$this->getAccessToken($this->options['google_server']);
+        }
+        return $this;
     }
 
     /**获取access_token的方法，并对access_token做了缓存处理
@@ -142,16 +162,19 @@ class Fcm
     }
 
     /**发送主题推送
-     * @param $messgeData
+     * @param $messageData
      * @return string
+     * @throws \Google_Exception
      */
-    public function sendTopicMessage($messgeData)
+    public function sendTopicMessage($messageData)
     {
-        $this->common= $messgeData;
-        if (!empty($options)) {
-            $this->options = array_merge($this->options, $options);
+        if (!empty($messageData)) {
+            $this->common = array_merge($this->common, $messageData);
         }
         $sendData= ['message' => array_filter($this->common)];
-        return  $this->push($sendData);
+        $url = 'https://fcm.googleapis.com/v1/projects/'.$this->options['project_id'].'/messages:send';
+        return $this->setHeader('send')->curl->post($url,[
+            'json'=>$sendData
+        ]);
     }
 }
