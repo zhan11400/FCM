@@ -28,7 +28,7 @@ class Index
             'notification'=>[
                 'title' => 'title',
                 'body' => 'New news story available.',
-                'image'=>'https://aiteam.runearntoday.com/abc_48.png',
+                'image'=>'https://xxx.xxx.com/xxx.png',
             ],
             'topic'=>$topic_name,
         ];
